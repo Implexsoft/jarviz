@@ -36,9 +36,12 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 public interface MethodCoupling {
 
     Comparator<MethodCoupling> COMPARATOR = (a, b) -> {
-        final int comparison = Method.COMPARATOR.compare(a.getSource(), b.getSource());
+        int comparison = Method.COMPARATOR.compare(a.getSource(), b.getSource());
         if (comparison == 0) {
-            return Method.COMPARATOR.compare(a.getTarget(), b.getTarget());
+            comparison = Method.COMPARATOR.compare(a.getTarget(), b.getTarget());
+            if (comparison == 0) {
+                return a.getCouplingType().compareTo(b.getCouplingType());
+            }
         }
         return comparison;
     };
@@ -57,5 +60,11 @@ public interface MethodCoupling {
      */
     Method getTarget();
 
+    /**
+     * Coupling type
+     *
+     * @return Coupling .
+     */
+    CouplingType getCouplingType();
     class Builder extends ImmutableMethodCoupling.Builder {}
 }

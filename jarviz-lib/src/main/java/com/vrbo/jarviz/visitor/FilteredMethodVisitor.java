@@ -16,6 +16,7 @@
 
 package com.vrbo.jarviz.visitor;
 
+import com.vrbo.jarviz.model.CouplingType;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -71,6 +72,7 @@ public class FilteredMethodVisitor extends MethodVisitor {
             new MethodCoupling.Builder()
                 .source(sourceMethod)
                 .target(targetMethod)
+                .couplingType(CouplingType.CALL)
                 .build()
         );
     }

@@ -34,4 +34,6 @@ public interface ClassLoaderService {
 
     List<ShadowClass> getAllClasses(@Nonnull final Artifact artifact,
                                     @Nonnull final Predicate<String> classNameFilter);
+
+    Class<?> getClass(String className) throws ClassNotFoundException;
 }

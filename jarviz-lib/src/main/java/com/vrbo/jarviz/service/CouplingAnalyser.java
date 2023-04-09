@@ -16,9 +16,13 @@
 
 package com.vrbo.jarviz.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.vrbo.jarviz.model.CouplingFilterUtils;
+import com.vrbo.jarviz.model.CouplingType;
+import com.vrbo.jarviz.model.Method;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,9 +168,43 @@ public class CouplingAnalyser {
         applicationSetClassCount.addAndGet(classesFromJarClassLoader.size());
         applicationClassCount.addAndGet(classesFromJarClassLoader.size());
 
-        final UsageCollector usageCollector = new UsageCollector(filterConfig);
+        final UsageCollector usageCollector = new UsageCollector(filterConfig, classLoaderService);
         for (ShadowClass c : classesFromJarClassLoader) {
             new FilteredClassVisitor(c.getClassName(), usageCollector, c.getClassBytes()).visit();
+
+
+
+            try {
+                Class<?> aClass = classLoaderService.getClass(c.getClassName());
+                //recursively collect all the interfaces that the class implements
+                //and check if it overrides anything
+
+                List<Class<?>> interfaces = getAllinterfacesRecursively(aClass);
+
+                for (Class<?> anInterface : interfaces) {
+                    for (java.lang.reflect.Method method : anInterface.getMethods()) {
+                        MethodCoupling methodCoupling = new MethodCoupling.Builder()
+                            .source(new Method.Builder()
+                                .className(anInterface.getName())
+                                .methodName(method.getName())
+                                .build())
+                            .target(new Method.Builder()
+                                .className(c.getClassName())
+                                .methodName(method.getName())
+                                .build())
+                            .couplingType(CouplingType.OVERRIDE)
+                            .build();
+                        if (CouplingFilterUtils.filterMethodCoupling(filterConfig, methodCoupling)) {
+                            usageCollector.collectMethodCoupling(methodCoupling);
+                        }
+                    }
+
+                }
+
+            } catch (ClassNotFoundException e) {
+                log.error("Class not found {}", c.getClassName(), e);
+            }
+
         }
 
         final List<MethodCoupling> couplings = usageCollector.getMethodCouplings();
@@ -180,6 +218,16 @@ public class CouplingAnalyser {
         return couplings.size();
     }
 
+    private static List<Class<?>> getAllinterfacesRecursively(Class<?> aClass) {
+
+        ArrayList interfaces = new ArrayList();
+        for (Class<?> anInterface : aClass.getInterfaces()) {
+            interfaces.add(anInterface);
+            interfaces.addAll(getAllinterfacesRecursively(anInterface));
+        }
+        return interfaces;
+    }
+
     private static CouplingRecord toCouplingRecord(final ApplicationSet appSet,
                                                    final Application app,
                                                    final Artifact artifact,
@@ -191,6 +239,7 @@ public class CouplingAnalyser {
                    .artifactId(artifact.getArtifactId())
                    .artifactGroup(artifact.getGroupId())
                    .artifactVersion(artifact.getVersion())
+                   .couplingType(methodCoupling.getCouplingType().name())
                    .sourceClass(methodCoupling.getSource().getClassName())
                    .sourceMethod(methodCoupling.getSource().getMethodName())
                    .targetClass(methodCoupling.getTarget().getClassName())

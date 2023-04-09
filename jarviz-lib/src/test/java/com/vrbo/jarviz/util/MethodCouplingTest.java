@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.vrbo.jarviz.model.ShadowClass;
 import org.junit.Test;
 
 import com.vrbo.jarviz.config.CouplingFilterConfig;
@@ -45,6 +46,7 @@ public class MethodCouplingTest {
                                                               .build())
                                                       .build();
         final UsageCollector collector = new UsageCollector(filterConfig);
+
 
         final FilteredClassVisitor classVisitor = new FilteredClassVisitor(MySource.class.getName(), collector);
 

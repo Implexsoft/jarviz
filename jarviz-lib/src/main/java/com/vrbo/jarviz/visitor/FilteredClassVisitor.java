@@ -42,7 +42,7 @@ public class FilteredClassVisitor extends ClassVisitor {
         this(className, collect, new ClassReader(className));
     }
 
-    public FilteredClassVisitor(final String className, final Collector collect, final byte[] classData) {
+    public FilteredClassVisitor(final String className, final Collector collect, final byte[] classData){
         this(className, collect, new ClassReader(classData));
     }
 

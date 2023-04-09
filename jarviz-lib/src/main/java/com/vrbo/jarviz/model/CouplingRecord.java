@@ -71,6 +71,11 @@ public interface CouplingRecord {
     String getArtifactVersion();
 
     /**
+     * Type of coupling CALL/OVERRIDE).
+     *
+     * @return The coupling type.
+     */    String couplingType();
+    /**
      * The fully qualified name of the source class in the coupling.
      *
      * @return The source class name.

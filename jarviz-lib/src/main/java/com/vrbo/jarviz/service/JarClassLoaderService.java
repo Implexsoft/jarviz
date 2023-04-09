@@ -19,8 +19,12 @@ package com.vrbo.jarviz.service;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -36,6 +40,8 @@ import com.google.common.reflect.ClassPath;
 import com.vrbo.jarviz.model.Artifact;
 import com.vrbo.jarviz.model.ShadowClass;
 
+import com.vrbo.jarviz.config.JarvizConfig;
+
 import static java.util.stream.Collectors.toList;
 
 public class JarClassLoaderService implements ClassLoaderService {
@@ -43,10 +49,29 @@ public class JarClassLoaderService implements ClassLoaderService {
     private final Logger log = LoggerFactory.getLogger(JarClassLoaderService.class);
 
     private final ArtifactDiscoveryService artifactDiscoveryService;
+    private final String localRepoPath;
+
+
+    private final ClassLoader classLoader;
 
     @Inject
-    public JarClassLoaderService(final ArtifactDiscoveryService artifactDiscoveryService) {
+    public JarClassLoaderService(final ArtifactDiscoveryService artifactDiscoveryService, final JarvizConfig config) throws URISyntaxException, IOException {
+        this.localRepoPath = config.getArtifactDirectory();
         this.artifactDiscoveryService = artifactDiscoveryService;
+        this.classLoader = createDirectoryLoader(localRepoPath);
+
+    }
+
+    public static ClassLoader createDirectoryLoader(String directory) throws URISyntaxException, IOException {
+        Collection<URL> urls = new ArrayList<URL>();
+        File dir = new File(directory);
+        File[] files = dir.listFiles();
+        for (File f : files) {
+            System.out.println(f.getCanonicalPath());
+            urls.add(f.toURI().toURL());
+        }
+
+        return URLClassLoader.newInstance(urls.toArray(new URL[urls.size()]));
     }
 
     /**
@@ -99,10 +124,20 @@ public class JarClassLoaderService implements ClassLoaderService {
             } catch (IOException e) {
                 log.error("Unable to load class {}", classInfo.getName(), e);
                 throw new IllegalStateException(String.format("Unable to load class %s", classInfo.getName()), e);
+            } catch (IllegalStateException e) {
+                log.error("Unable to load class {}", classInfo.getName(), e);
+            } catch (java.lang.NoClassDefFoundError e) {
+                log.error("Class def not found for class {}", classInfo.getName(), e);
             }
+
         }
 
         return listBuilder.build();
+    }
+
+    @Override
+    public Class<?> getClass(String className) throws ClassNotFoundException {
+        return classLoader.loadClass(className);
     }
 
     /**
@@ -128,7 +163,8 @@ public class JarClassLoaderService implements ClassLoaderService {
     /**
      * Maps a {@link ClassPath.ClassInfo} into a {@link ShadowClass}
      *
-     * @param classInfo The {@link ClassPath.ClassInfo}.
+     * @param classInfo  The {@link ClassPath.ClassInfo}.
+     * @param interfaces
      * @return The {@link ShadowClass}.
      */
     static ShadowClass mapClassInfoToShadowClass(@Nonnull final ClassPath.ClassInfo classInfo) throws IOException {
