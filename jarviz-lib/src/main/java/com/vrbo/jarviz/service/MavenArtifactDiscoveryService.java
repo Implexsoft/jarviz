@@ -56,7 +56,13 @@ public class MavenArtifactDiscoveryService implements ArtifactDiscoveryService {
     public File discoverArtifact(final Artifact artifact) throws ArtifactNotFoundException {
         final File file = new File(toFullPath(localRepoPath, artifact.toFileName()));
         if (!file.exists()) {
-            runMavenCopy(artifact);
+            final File releaseFile = new File(toFullPath(localRepoPath, artifact.toFileName("RELEASE")));
+
+            if (!releaseFile.exists()) {
+                runMavenCopy(artifact);
+            } else {
+                return releaseFile;
+            }
         }
 
         return file;

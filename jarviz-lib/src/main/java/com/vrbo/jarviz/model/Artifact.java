@@ -116,6 +116,20 @@ public interface Artifact {
         }
     }
 
+    @JsonIgnore
+    default String toFileName(final String tryVersion) {
+        if (isVersionLatestOrRelease(tryVersion)) {
+            return String.format("%s.%s",
+                getArtifactId(),
+                getPackaging());
+        } else {
+            return String.format("%s-%s%s.%s",
+                getArtifactId(),
+                getVersion(),
+                getClassifier().map(s -> "-" + s).orElse(""),
+                getPackaging());
+        }
+    }
     /**
      * A string of the form groupId:artifactId:version[:packaging[:classifier]]
      * Eg:
@@ -165,5 +179,8 @@ public interface Artifact {
         return NON_SPECIFIC_VERSIONS.contains(getVersion());
     }
 
+    default boolean isVersionLatestOrRelease(final String version) {
+        return NON_SPECIFIC_VERSIONS.contains(version);
+    }
     class Builder extends ImmutableArtifact.Builder {}
 }
